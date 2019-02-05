@@ -128,7 +128,78 @@ class KnowledgeBase(object):
         printv("Retracting {!r}", 0, verbose, [fact_or_rule])
         ####################################################
         # Student code goes here
-        
+
+
+        if isinstance(fact_or_rule,Fact):
+            fact = self._get_fact(fact_or_rule)
+            if len(fact.supported_by) == 0:
+                    self.facts.remove(fact)
+            if len(fact.supported_by) > 0:
+                for item in fact.supported_by:
+                    fac = item[0]
+                    rul = item[1]
+                    fac = self._get_fact(fac)
+                    rul = self._get_rule(rul)
+                    fac.supports_facts.remove(fact)
+                    rul.supports_facts.remove(fact)
+                if len(fact.supported_by) == 0:
+                    self.kb_retract(fact)
+            for each in fact.supports_facts:
+                sfact = self._get_fact(each)
+                for pair in sfact.supported_by:
+                    if fact in pair:
+                        sfact.supported_by.remove(pair)
+                if len(sfact.supported_by) == 0 :
+                    self.kb_retract(sfact)
+            for each in fact.supports_rules:
+                srule = self._get_rule(each)
+                for pair in srule.supported_by:
+                    if fact in pair:
+                        srule.supported_by.remove(pair)
+                if len(srule.supported_by) == 0 :
+                    self.kb_retract(srule)
+
+            else:
+                return
+
+        if isinstance(fact_or_rule, Rule):
+            rule = self._get_rule(fact_or_rule)
+            if rule.asserted:
+                return
+            else:
+                if len(rule.supported_by) == 0:
+                    self.rules.remove(rule)
+                if len(rule.supported_by) > 0:
+                    for item in rule.supported_by:
+                        fac = item[0]
+                        rul = item[1]
+                        fac = self._get_fact(fac)
+                        rul = self._get_rule(rul)
+                        fac.supports_facts.remove(rule)
+                        rul.supports_facts.remove(rule)
+                    if len(rule.supported_by) == 0:
+                        self.kb_retract(rule)
+            for each in rule.supports_facts:
+                sfact = self._get_fact(each)
+                for pair in sfact.supported_by:
+                    if rule in pair:
+                        sfact.supported_by.remove(pair)
+                if len(sfact.supported_by) == 0:
+                    self.kb_retract(sfact)
+            for each in rule.supports_rules:
+                srule = self._get_rule(each)
+                for pair in srule.supported_by:
+                    if rule in pair:
+                        srule.supported_by.remove(pair)
+                if len(srule.supported_by) == 0:
+                    self.kb_retract(srule)
+
+            else:
+                return
+
+
+
+
 
 class InferenceEngine(object):
     def fc_infer(self, fact, rule, kb):
@@ -146,3 +217,24 @@ class InferenceEngine(object):
             [fact.statement, rule.lhs, rule.rhs])
         ####################################################
         # Student code goes here
+
+        binding = match(fact.statement, rule.lhs[0])
+        new_rule_lhs = []
+        if binding:
+            new_rule_rhs = instantiate(rule.rhs, binding)
+            for each_statement in rule.lhs[1:]:
+                new_rule_lhs.append(instantiate(each_statement, binding))
+
+            if len(rule.lhs) == 1:
+                new_fact = Fact(new_rule_rhs, [[fact, rule]])
+                rule.supports_facts.append(new_fact)
+                fact.supports_facts.append(new_fact)
+                kb.kb_assert(new_fact)
+
+            else:
+                new_rule = Rule([new_rule_lhs, new_rule_rhs], [[fact, rule]])
+                rule.supports_rules.append(new_rule)
+                fact.supports_rules.append(new_rule)
+                kb.kb_assert(new_rule)
+
+
